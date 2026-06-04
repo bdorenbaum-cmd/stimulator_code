@@ -1,0 +1,83 @@
+%Import excel table of stimulation order
+opts = detectImportOptions("stimulationorder.xlsx");
+opts = setvartype(opts,'double');
+order = readtable("stimulation_mri_tavns_block.xlsx", opts);
+order = order.Variables;
+breaks = [9, 18, 27, 36, 45];
+for i = 10:size(order, 1)
+    stim.anode = order(i, 1);
+    stim.intensity = order(i, 2);
+    stim.duration = order(i, 3);
+    stim.frequency = order(i, 4);
+
+    %Settings: Waveform Change tACS
+    ptACS = struct('Action',7,'WaveformType','tACS','SHAM','FALSE','ChannelSelection','MULTIPLE') ;
+    JSONtaCS = jsonencode(ptACS);
+    outlet.push_sample({JSONtaCS});
+    
+
+    pDuration = struct('Action',7,'Duration', stim.duration); 
+    JSONDuration = jsonencode(pDuration); 
+    outlet.push_sample({JSONDuration});
+    
+
+    %Add Channels
+
+    % ANODE
+    pChannel = struct("Action",0,"ChannelNumber",stim.anode);
+    JSONaddAnode = jsonencode(pChannel);
+    outlet.push_sample({JSONaddAnode});
+    pause(1)
+
+    % Set intensity
+    pIntensity = struct('Action',7,'Intensity', stim.intensity); 
+    JSONIntensity = jsonencode(pIntensity);
+    outlet.push_sample({JSONIntensity});
+    
+    % Set Frequency
+    pFrequency = struct('Action',7,'ChannelNumber',0,'Frequency',stim.frequency); 
+    JSONFrequency = jsonencode(pFrequency); 
+    outlet.push_sample({JSONFrequency});
+    pause(3)
+    
+    %Load Stimulation
+    pLoad = struct('Action',3, 'value', 'TRUE'); 
+    JSONLoad = jsonencode(pLoad);
+    outlet.push_sample({JSONLoad});
+    % pause(2)
+
+    disp("Loaded Stimulation Parameters")
+           
+    %Starting Stimulation
+    pause(3)
+    pstartStimulation = struct('Action',4,'value', 'TRUE'); 
+    JSONstartStimulation = jsonencode(pstartStimulation);
+    outlet.push_sample({JSONstartStimulation});
+    disp("Started Stimulation")
+    
+    if ismember(i, breaks)
+        pause(60)
+    else
+        pause(30)
+    end
+
+
+    % pstopStimulation = struct('Action',5,'value', 'TRUE'); 
+    % JSONstopStimulation = jsonencode(pstopStimulation);
+    % outlet.push_sample({JSONstopStimulation}); 
+
+   
+
+    pdeleteAnode = struct('Action',2, "ChannelNumber", stim.anode); 
+    JSONdeleteAnode = jsonencode(pdeleteAnode);
+    outlet.push_sample({JSONdeleteAnode}); 
+    pause(3)
+    disp("Ended Stimulation")
+
+end
+clearvars -except info lib outlet opts order
+
+
+   
+
+
